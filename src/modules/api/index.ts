@@ -10,7 +10,9 @@ const weatherApi = axios.create({
 weatherApi.interceptors.request.use((config) => {
   return {
     ...config,
-    url: config.url?.concat(`&appId=${process.env.OMW_API_KEY}`),
+    url: config.url?.concat(
+      `&appId=${process.env.OMW_API_KEY}&units=metric&lang=en`
+    ),
   };
 });
 

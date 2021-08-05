@@ -8,7 +8,12 @@ const queryClient = new QueryClient();
 function MyApp({ Component, pageProps }: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <Component {...pageProps} />
+      <div
+        className="flex flex-col h-full min-h-screen mx-auto"
+        style={{ maxWidth: "1920px" }}
+      >
+        <Component {...pageProps} />
+      </div>
     </QueryClientProvider>
   );
 }

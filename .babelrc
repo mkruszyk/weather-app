@@ -9,5 +9,7 @@
           "@": "./src"
         }
       }
-    ]]
+    ],
+    "inline-react-svg"
+  ]
 }
