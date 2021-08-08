@@ -13,6 +13,7 @@ export namespace API {
        * Time of the forecasted data, Unix, UTC
        */
       dt: number;
+      clouds: number;
       humidity: number;
       feels_like: {
         day: number;
@@ -34,6 +35,8 @@ export namespace API {
         id: number;
         main: string;
       }>;
+      pressure: number;
+      wind_speed: number;
     };
   }
 
