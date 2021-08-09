@@ -1,3 +1,4 @@
+import { API } from "@/types/api";
 import { UnitsOfMeasurement } from "@/types/misc";
 import { ReactElement } from "react";
 
@@ -15,4 +16,11 @@ export const unitsDict: Record<
     temperature: <>&#8457;</>,
     wind: "mi/h",
   },
+};
+
+export const defaultLocation: API.Types.Location = {
+  country: "PL",
+  lat: 51.1,
+  lon: 17.0333,
+  name: "Wrocław",
 };

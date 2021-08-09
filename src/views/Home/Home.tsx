@@ -1,5 +1,6 @@
+import clsx from "clsx";
 import Head from "next/head";
-import { useMemo, useState } from "react";
+import { ChangeEvent, ReactText, useMemo, useState } from "react";
 import { useQuery } from "react-query";
 import { useDebounce } from "use-debounce";
 
@@ -24,8 +25,8 @@ import {
 } from "@/utils/misc";
 import WeatherParam from "@/components/WeatherParam";
 import { UnitsOfMeasurement } from "@/types/misc";
-import { unitsDict } from "@/constants";
-import clsx from "clsx";
+import { defaultLocation, unitsDict } from "@/constants";
+import QueryResults from "@/components/QueryResults";
 
 function Home() {
   const [selectedUnits, setSelectedUnits] =
@@ -33,6 +34,9 @@ function Home() {
   // TODO: use router.query for searchPhrase instead of useState
   const [searchPhrase, setSearchPhrase] = useState("Wrocław");
   const [cityName] = useDebounce(searchPhrase, 500);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [location, setLocation] =
+    useState<API.Types.Location | null>(defaultLocation);
 
   const units = unitsDict[selectedUnits];
 
@@ -40,25 +44,20 @@ function Home() {
     ["GET /direct (city-name)", cityName],
     () => api.geo.get<API.GetCoordinatesResponse>(`/direct?q=${cityName}`),
     {
-      keepPreviousData: true,
       enabled: !!cityName,
       select: (res) => res.data,
     }
   );
 
   const forecastQuery = useQuery(
-    [
-      "GET /onecall (daily-forecast)",
-      locationQuery.data?.length,
-      selectedUnits,
-    ],
+    ["GET /onecall (daily-forecast)", location, selectedUnits],
     () =>
       api.weather.get<API.GetWeatherForecastResponse>(
-        `/onecall?lat=${locationQuery.data?.[0].lat}&lon=${locationQuery.data?.[0].lon}&exclude=current,minutely,hourly,alerts&units=${selectedUnits}`
+        `/onecall?lat=${location?.lat}&lon=${location?.lon}&exclude=current,minutely,hourly,alerts&units=${selectedUnits}`
       ),
     {
       keepPreviousData: true,
-      enabled: !!locationQuery.data?.length,
+      enabled: !!location,
       select: (res) => res.data.daily.slice(0, 5),
     }
   );
@@ -71,21 +70,66 @@ function Home() {
     );
   }, [forecastQuery.data]);
 
+  const queryResults = useMemo(() => {
+    if (!locationQuery.data) return [];
+
+    return locationQuery.data.map((result) => {
+      return {
+        label: result.name,
+        value: result.lat + result.lon,
+      };
+    });
+  }, [locationQuery.data]);
+
+  const onSelectLocation = (option: { label: string; value: ReactText }) => {
+    const location = locationQuery.data?.find(
+      (result) => result.lat + result.lon === option.value
+    );
+
+    if (location) {
+      setLocation(location);
+      setSearchPhrase(location.name);
+      setIsSearchActive(false);
+    }
+  };
+
+  const handleSearchPhrase = (evt: ChangeEvent<HTMLInputElement>) => {
+    if (!isSearchActive) {
+      setIsSearchActive(true);
+    }
+
+    setSearchPhrase(evt.target.value);
+  };
+
   return (
     <>
       <Head>
         <title>Weather App</title>
       </Head>
       <main className="flex flex-col items-center self-center justify-center flex-grow w-full max-w-2xl p-4 font-sans">
-        <section className="flex flex-col items-center w-full p-4 m-4">
-          <div className="flex items-center mb-20">
-            <h1 className="text-2xl">Check the weather in, </h1>
+        <section className="flex flex-col items-center w-full m-4 sm:m-8">
+          <h1 className="mb-4 text-2xl">
+            Find the local weather forecast for your location
+          </h1>
+          <div
+            className="flex flex-col items-center w-full mb-20"
+            style={{ maxWidth: "240px" }}
+          >
             <input
-              className="px-1 text-2xl text-center text-gray-800 border-b border-gray-200 outline-none w-28"
-              onChange={(evt) => setSearchPhrase(evt.target.value)}
-              placeholder="City name"
+              autoComplete="off"
+              className="flex w-full px-4 py-1 text-lg text-gray-800 border border-gray-200 rounded-md shadow outline-none"
+              onChange={handleSearchPhrase}
+              placeholder="Search Location"
+              type="text"
               value={searchPhrase}
             />
+            {cityName && isSearchActive && (
+              <QueryResults
+                handleSelectItem={onSelectLocation}
+                searchPhrase={searchPhrase}
+                results={queryResults}
+              />
+            )}
           </div>
           <div className="flex items-center self-end">
             <button
@@ -210,35 +254,37 @@ function Home() {
               ))}
           </ul>
         </section>
-        <section className="w-full pt-4 mt-10 border-t-2 border-red-700">
-          <h2 className="text-xl">
-            Stats for 5-day weather forecast for{" "}
-            <span className="capitalize">{searchPhrase}</span>
-          </h2>
-          <ul>
-            <li>
-              Max temp: {getMaxValue(tempValuesFor5Days)}
-              {units.temperature}
-            </li>
-            <li>
-              Min temp: {getMinValue(tempValuesFor5Days)}
-              {units.temperature}
-            </li>
-            <li>
-              Mean value: {getMeanValue(tempValuesFor5Days)}
-              {units.temperature}
-            </li>
-            <li>
-              Mode value:{" "}
-              {getModeValue(tempValuesFor5Days).map((val, idx) => (
-                <span key={idx}>
-                  {idx > 0 && ", "}
-                  {val}
-                </span>
-              ))}
-            </li>
-          </ul>
-        </section>
+        {location && (
+          <section className="w-full pt-4 mt-10 border-t-2 border-red-700">
+            <h2 className="text-xl">
+              Stats for 5-day weather forecast for{" "}
+              <span className="capitalize">{searchPhrase}</span>
+            </h2>
+            <ul>
+              <li>
+                Max temp: {getMaxValue(tempValuesFor5Days)}
+                {units.temperature}
+              </li>
+              <li>
+                Min temp: {getMinValue(tempValuesFor5Days)}
+                {units.temperature}
+              </li>
+              <li>
+                Mean value: {getMeanValue(tempValuesFor5Days)}
+                {units.temperature}
+              </li>
+              <li>
+                Mode value:{" "}
+                {getModeValue(tempValuesFor5Days).map((val, idx) => (
+                  <span key={idx}>
+                    {idx > 0 && ", "}
+                    {val}
+                  </span>
+                ))}
+              </li>
+            </ul>
+          </section>
+        )}
       </main>
     </>
   );
