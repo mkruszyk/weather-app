@@ -9,7 +9,7 @@ import {
 } from "react";
 
 type Props = ComponentPropsWithoutRef<"div"> & {
-  icon?: ReactElement;
+  icon?: string | boolean;
   name: string;
   units?: ReactNode;
   value: number;
